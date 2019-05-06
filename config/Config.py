@@ -13,7 +13,7 @@ import numpy as np
 import copy
 
 def to_var(x):
-    return Variable(torch.from_numpy(x).cuda())
+    return Variable(torch.from_numpy(x).cpu())
 
 
 class Config(object):
@@ -288,7 +288,7 @@ class Config(object):
         print("Initializing training model...")
         self.model = model
         self.trainModel = self.model(config=self)
-        self.trainModel.cuda()
+        self.trainModel.cpu()
         if self.optimizer != None:
             pass
         elif self.opt_method == "Adagrad" or self.opt_method == "adagrad":
@@ -325,7 +325,7 @@ class Config(object):
         if path == None:
             path = os.path.join(self.result_dir, self.model.__name__ + ".ckpt")
         self.testModel.load_state_dict(torch.load(path))
-        self.testModel.cuda()
+        self.testModel.cpu()
         self.testModel.eval()
         print("Finish initializing")
 
@@ -402,7 +402,7 @@ class Config(object):
             print("Epoch %d | loss: %f" % (epoch, res))
             if (epoch + 1) % self.save_steps == 0:
                 print("Epoch %d has finished, saving..." % (epoch))
-                self.save_checkpoint(self.trainModel.state_dict(), epoch)
+                # self.save_checkpoint(self.trainModel.state_dict(), epoch)
             if (epoch + 1) % self.valid_steps == 0:
                 print("Epoch %d has finished, validating..." % (epoch))
                 hit10 = self.valid(self.trainModel)
@@ -429,8 +429,8 @@ class Config(object):
         print("Store checkpoint of best result at epoch %d..." % (best_epoch))
         if not os.path.isdir(self.result_dir):
             os.mkdir(self.result_dir)
-        self.save_best_checkpoint(best_model)
-        self.save_embedding_matrix(best_model)
+        # self.save_best_checkpoint(best_model)
+        # self.save_embedding_matrix(best_model)
         print("Finish storing")
         print("Testing...")
         self.set_test_model(self.model)
