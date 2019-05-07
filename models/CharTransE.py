@@ -2,6 +2,7 @@ import torch
 import torch.autograd as autograd
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.nn import Parameter
 
 from torch.autograd import Variable
 import numpy as np
@@ -11,9 +12,9 @@ import numpy as np
 from scipy.sparse import coo_matrix
 import os
 from scipy import sparse
+from models.Model import Model
 import re
-from .Model import Model
-from torch.nn.modules.sparse import Embedding
+from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 
 def sparse_tensor(vector):
     coo = coo_matrix(vector)
@@ -24,7 +25,7 @@ def sparse_tensor(vector):
     v = torch.FloatTensor(values)
     shape = coo.shape
 
-    return torch.sparse.FloatTensor(i, v, torch.Size(shape))
+    return torch.cuda.sparse.FloatTensor(i, v, torch.Size(shape))
 
 def partition(some_list, length=3):
     for i in range(0, len(some_list)):
@@ -48,19 +49,22 @@ def transform_into_substring(some_string, sub_len = 3):
 class CharTransE(Model):
     def __init__(self, config):
         super(CharTransE, self).__init__(config)
+        # sparse_path = os.path.dirname(__file__) + '/ent_tf.pkl.npz'
         sparse_path = os.path.dirname(__file__) + '/ent_tfidf.pkl.npz'
         self.tf_idf_mat = sparse.load_npz(sparse_path)
 
         ent_shape = self.tf_idf_mat.shape[1]
 
+        # self.attention = torch.nn.init.xavier_uniform_(Parameter(torch.FloatTensor(1, ent_shape)))
+
         # self.tfidf_embedding = Embedding(tf_idf_mat.shape[0],ent_shape, sparse=True)
         # self.tfidf_embedding.weight.requires_grad = False
-        self.tfidf_embedding = nn.Embedding.from_pretrained(sparse_tensor(self.tf_idf_mat), freeze=True, sparse=True)
+        # self.tfidf_embedding = nn.Embedding.from_pretrained(self.tf_idf_mat, freeze=True)
         # self.tfidf_embedding = Embedding(self.tf_idf_mat.shape[0], ent_shape, sparse=True)
         # self.tfidf_embedding.load_state_dict({'weight':self.tf_idf_mat})
         # self.tfidf_embedding.weight.requires_grad=False
-        self.ent_char_weights = nn.Linear(ent_shape, self.config.hidden_size)
-        self.rel_embeddings = nn.Embedding(self.config.relTotal, self.config.hidden_size)
+        self.ent_char_weights = nn.Linear(ent_shape, self.config.hidden_size, bias=True).cuda()
+        self.rel_embeddings = nn.Embedding(self.config.relTotal, self.config.hidden_size).cuda()
         self.criterion = nn.MarginRankingLoss(self.config.margin, False)
         self.init_weights()
 
@@ -72,14 +76,18 @@ class CharTransE(Model):
         return torch.norm(h + r - t, self.config.p_norm, -1)
 
     def loss(self, p_score, n_score):
-        y = Variable(torch.Tensor([-1]).cpu())
+        y = Variable(torch.Tensor([-1]).cuda())
         return self.criterion(p_score, n_score, y)
 
     def forward(self):
-        # h_sparse_x = sparse_tensor(self.tf_idf_mat[self.batch_h.numpy(), :])
-        h_sparse_x = self.tfidf_embedding(self.batch_h)
-        # t_sparse_x = sparse_tensor(self.tf_idf_mat[self.batch_t.numpy(), :])
-        t_sparse_x = self.tfidf_embedding(self.batch_t)
+
+        h_tf = sparse_tensor(self.tf_idf_mat[self.batch_h.cpu().data.numpy(), :])
+        # h_tf = h_tf.mul(self.attention)
+        h_sparse_x = h_tf.cuda()
+        # h_sparse_x = torch.mul(h_sparse_x, self.attention)
+        # h_sparse_x = self.tfidf_embedding(self.batch_h)
+        t_sparse_x = sparse_tensor(self.tf_idf_mat[self.batch_t.cpu().data.numpy(), :]).cuda()
+        # t_sparse_x = self.tfidf_embedding(self.batch_t)
         h = self.ent_char_weights(h_sparse_x)
         t = self.ent_char_weights(t_sparse_x)
         r = self.rel_embeddings(self.batch_r)
@@ -90,10 +98,33 @@ class CharTransE(Model):
 
 
     def predict(self):
-        h_sparse_x = sparse_tensor(self.tf_idf_mat[self.batch_h.numpy(), :])
-        t_sparse_x = sparse_tensor(self.tf_idf_mat[self.batch_t.numpy(), :])
+        h_sparse_x = sparse_tensor(self.tf_idf_mat[self.batch_h.cpu().data.numpy(), :]).cuda()
+        t_sparse_x = sparse_tensor(self.tf_idf_mat[self.batch_t.cpu().data.numpy(), :]).cuda()
         h = self.ent_char_weights(h_sparse_x)
         t = self.ent_char_weights(t_sparse_x)
         r = self.rel_embeddings(self.batch_r)
         score = self._calc(h, t, r)
         return score.cpu().data.numpy()
+
+
+def save_tfidf(docs):
+    # vectorizer = TfidfVectorizer()
+    vectorizer = CountVectorizer()
+    X = vectorizer.fit_transform(docs)
+    # pickle.dump(X, open('ent_tfidf.pkl', 'wb'))
+    sparse.save_npz("ent_tf.pkl", X)
+
+
+if __name__=='__main__':
+    file = '../benchmarks/FB15K237_names/entity2id.txt'
+    with open(file) as ff:
+        lines = ff.readlines()[1:]
+        entities = [line.split('\t')[0] for line in lines]
+        docs = [transform_into_substring(ent) for ent in entities]
+        save_tfidf(docs)
+
+    # X = sparse.load_npz('ent_tfidf.pkl.npz')
+    X = sparse.load_npz('ent_tf.pkl.npz')
+    print(X.shape)
+    # x_ten = convert_to_tensor(X[[10, 12], :])
+    pass
