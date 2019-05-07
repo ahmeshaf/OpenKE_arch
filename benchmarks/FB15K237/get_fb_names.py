@@ -5,7 +5,7 @@ from urllib.request import urlopen
 from pymongo import MongoClient, ASCENDING
 # query = 'Taylor Swift'
 service_url = 'https://kgsearch.googleapis.com/v1/entities:search'
-api_key = "AIzaSyBdCB1Y-RZ2C0eubbGRPtTYsZeXFuaBUb8"
+api_key = "[API_KEY]"
 
 db_name = 'freebase'
 collection_name = 'fb15k237'
