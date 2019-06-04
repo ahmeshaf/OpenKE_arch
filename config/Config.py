@@ -13,7 +13,7 @@ import numpy as np
 import copy
 
 def to_var(x):
-    return Variable(torch.from_numpy(x).cuda())
+    return Variable(torch.from_numpy(x).cpu())
 
 
 class Config(object):
@@ -116,6 +116,7 @@ class Config(object):
         self.trainModel = None
         self.testModel = None
         self.pretrain_model = None
+        self.tfidf = False
 
     def init(self):
         self.lib.setInPath(
@@ -288,7 +289,7 @@ class Config(object):
         print("Initializing training model...")
         self.model = model
         self.trainModel = self.model(config=self)
-        self.trainModel.cuda()
+        self.trainModel.cpu()
         if self.optimizer != None:
             pass
         elif self.opt_method == "Adagrad" or self.opt_method == "adagrad":
@@ -325,7 +326,7 @@ class Config(object):
         if path == None:
             path = os.path.join(self.result_dir, self.model.__name__ + ".ckpt")
         self.testModel.load_state_dict(torch.load(path))
-        self.testModel.cuda()
+        self.testModel.cpu()
         self.testModel.eval()
         print("Finish initializing")
 
