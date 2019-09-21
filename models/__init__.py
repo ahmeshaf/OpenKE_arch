@@ -12,3 +12,4 @@ from .CharTransE import CharTransE
 
 from  models.CharTransE import *
 from  models.TransE import *
+from models.GraphTransE import *
