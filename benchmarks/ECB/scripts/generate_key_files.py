@@ -6,11 +6,11 @@ red_win_doc_cluster_file = "event_win_ecb.txt"
 red_cross_doc_cluster_file = "event_clusters_ecb.txt"
 
 # ta2_win_doc_cluster_file = "bbn/just_win_doc.txt"
-ta2_win_doc_cluster_file = "aida/event_win_clus.txt"
+ta2_win_doc_cluster_file = "eve_5/event_win_clus.txt"
 # ta2_cross_doc_cluster_file = "bbn/cluster_just_map.txt"
 # ta2_cross_doc_cluster_file = "isi_2018/cluster_just_map_rel_vec.txt"
 # ta2_cross_doc_cluster_file = "isi_2018/cluster_just_map_ref.txt"
-ta2_cross_doc_cluster_file = "aida/event_clusters.txt"
+ta2_cross_doc_cluster_file = "eve_5/event_clusters.txt"
 
 
 
@@ -94,10 +94,18 @@ def get_entity_map(entity_names, just2ent, clus_dict):
 
 def create_key_file(ent_clus_dict, file_name, key_name):
     # key_name = "RED"
+    values = ent_clus_dict.values()
+    value2_ind = {}
+    clus_num = 0
+    for val in values:
+        if val not in value2_ind:
+            value2_ind[val] = clus_num
+            clus_num+=1
+    value2_ind['-'] = '-'
     with open(file_name, 'w') as kf:
         kf.write("#begin document (%s);\n" % key_name)
         for i, item in enumerate(ent_clus_dict.items()):
-            kf.write("%s\t0\t%d\t%s\t(%s)\n" % (key_name, i, item[0], item[1]))
+            kf.write("%s\t0\t%d\t%s\t(%s)\n" % (key_name, i, item[0], value2_ind[item[1]]))
         kf.write("#end document\n")
 
 
