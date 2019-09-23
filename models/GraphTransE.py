@@ -28,15 +28,17 @@ def initialize_tfidf(config):
     entity2id_file = in_path + '/entity2id.txt'
     name_type_dict = defaultdict(list)
     with open(eve_map_path) as ef:
-        events = set([line.split(',')[0] for line in ef.readlines()])
+        events = set([line.strip().split(',')[1] for line in ef.readlines()])
     with open(entity2id_file) as ef:
         entities = [line.split('\t')[0] for line in ef.readlines()[1:]]
     name_df = pd.read_csv(ent_eve_name_path, header=None)
     all_names_and_types = set()
     for row in name_df.itertuples(index=0):
         if row[0] in events:
+
             name_type_dict[row[0]].append(row[0])
             all_names_and_types.add(row[0])
+
         if type(row[1]) == str:
             name_type_dict[row[0]].append(row[1])
             all_names_and_types.add(row[1])

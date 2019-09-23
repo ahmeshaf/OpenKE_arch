@@ -34,7 +34,7 @@ def partition(some_list, length=3):
 def transform_into_substring(some_string, sub_len = 3):
 
     if (some_string.startswith('type:')):
-        types = some_string.split(',')
+        types = some_string.split('.')
         return ' '.join([some_string]+ types[:1] + ['type:' + typ for typ in types[1:]])
     elif 'ecb_' in some_string or some_string.startswith("http"):
         return some_string
